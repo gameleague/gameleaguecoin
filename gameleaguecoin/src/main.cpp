@@ -55,6 +55,9 @@ uint256 hashBestChain = 0;
 CBlockIndex* pindexBest = NULL;
 int64 nTimeBestReceived = 0;
 
+unsigned int POS_NBITS_CUTOFF = 29360128; // 1c000000 >> 4
+
+
 CMedianFilter<int> cPeerBlockCounts(5, 0); // Amount of blocks that other nodes claim to have
 
 map<uint256, CBlock*> mapOrphanBlocks;
@@ -2261,10 +2264,19 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         bnNewBlock.SetCompact(pblock->nBits);
         CBigNum bnRequired;
 
-		if (pblock->IsProofOfStake())
-            bnRequired.SetCompact(ComputeMinStake(GetLastBlockIndex(pcheckpoint, true)->nBits, deltaTime, pblock->nTime));
+        // Adding checkpoints and fixing a staking problem.
+        const CBlockIndex* LastBlock = GetLastBlockIndex(pcheckpoint, true);
+        unsigned int nHeight = LastBlock->nHeight + 1;
+        unsigned int nLastBits = LastBlock->nBits;
+
+        if (pblock->IsProofOfStake()) {
+            if ((nHeight < POW_CUTOFF_BLOCK) && (nLastBits > POS_NBITS_CUTOFF)) {
+                nLastBits = nLastBits >> 12; // adjust difficulty for big hashes
+            }
+            bnRequired.SetCompact(ComputeMinStake(nLastBits, deltaTime, pblock->nTime));
+        }
         else
-            bnRequired.SetCompact(ComputeMinWork(GetLastBlockIndex(pcheckpoint, false)->nBits, deltaTime));
+            bnRequired.SetCompact(ComputeMinWork(nLastBits, deltaTime));
 
         if (bnNewBlock > bnRequired)
         {

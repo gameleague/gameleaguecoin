@@ -1,5 +1,5 @@
 
-GameLeagueCoin - GLC
+GameLeagueCoin - GML
 
 GameLeagueCoin also adopts a variable PoS rate with the following annual interest rate:
 Year-1: 50%
